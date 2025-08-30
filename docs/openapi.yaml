@@ -1,0 +1,312 @@
+openapi: 3.1.0
+info:
+  title: Airavate Backend API
+  description: |
+    Scalable production-grade backend API for Airavate project.
+    
+    ## Current Status
+    This API is in initial setup phase. Currently only basic health check and info endpoints are available.
+    
+    ## Future Features
+    - JWT Authentication (ready for Authentik integration)
+    - User Management
+    - Payment Processing (Razorpay integration)
+    - Audit Logging
+    - Rate Limiting
+    - CORS Support
+    
+  version: 1.0.0
+  contact:
+    name: Airavate Team
+    email: admin@airavate.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:3000
+    description: Development server
+  - url: https://api.airavate.com
+    description: Production server (future)
+
+paths:
+  # Health and Status
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check endpoint
+      description: Returns the health status of the API server
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: "OK"
+                timestamp: "2025-08-30T15:30:00.000Z"
+                environment: "development"
+                version: "1.0.0"
+
+  /:
+    get:
+      tags:
+        - General
+      summary: API root endpoint
+      description: Returns basic API information
+      responses:
+        '200':
+          description: API information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiInfoResponse'
+
+  /api/v1:
+    get:
+      tags:
+        - General
+      summary: API v1 information
+      description: Returns information about API v1 endpoints
+      responses:
+        '200':
+          description: API v1 information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiV1InfoResponse'
+
+  # Placeholder endpoints (501 Not Implemented)
+  /api/v1/auth/register:
+    post:
+      tags:
+        - Authentication (Coming Soon)
+      summary: Register endpoint (placeholder)
+      description: User registration endpoint - Coming soon
+      responses:
+        '501':
+          description: Not implemented yet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotImplementedResponse'
+
+  /api/v1/auth/login:
+    post:
+      tags:
+        - Authentication (Coming Soon)
+      summary: Login endpoint (placeholder)
+      description: User login endpoint - Coming soon
+      responses:
+        '501':
+          description: Not implemented yet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotImplementedResponse'
+
+  /api/v1/auth/logout:
+    post:
+      tags:
+        - Authentication (Coming Soon)
+      summary: Logout endpoint (placeholder)
+      description: User logout endpoint - Coming soon
+      responses:
+        '501':
+          description: Not implemented yet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotImplementedResponse'
+
+  /api/v1/auth/me:
+    get:
+      tags:
+        - Authentication (Coming Soon)
+      summary: Get profile endpoint (placeholder)
+      description: Get user profile endpoint - Coming soon
+      responses:
+        '501':
+          description: Not implemented yet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotImplementedResponse'
+
+  /api/v1/users:
+    get:
+      tags:
+        - Users (Coming Soon)
+      summary: Get users endpoint (placeholder)
+      description: Get all users endpoint - Coming soon
+      responses:
+        '501':
+          description: Not implemented yet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotImplementedResponse'
+
+    post:
+      tags:
+        - Users (Coming Soon)
+      summary: Create user endpoint (placeholder)
+      description: Create user endpoint - Coming soon
+      responses:
+        '501':
+          description: Not implemented yet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotImplementedResponse'
+
+  /api/v1/users/{id}:
+    get:
+      tags:
+        - Users (Coming Soon)
+      summary: Get user by ID endpoint (placeholder)
+      description: Get user by ID endpoint - Coming soon
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: User ID
+          schema:
+            type: string
+      responses:
+        '501':
+          description: Not implemented yet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotImplementedResponse'
+
+    put:
+      tags:
+        - Users (Coming Soon)
+      summary: Update user endpoint (placeholder)
+      description: Update user endpoint - Coming soon
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: User ID
+          schema:
+            type: string
+      responses:
+        '501':
+          description: Not implemented yet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotImplementedResponse'
+
+    delete:
+      tags:
+        - Users (Coming Soon)
+      summary: Delete user endpoint (placeholder)
+      description: Delete user endpoint - Coming soon
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: User ID
+          schema:
+            type: string
+      responses:
+        '501':
+          description: Not implemented yet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotImplementedResponse'
+
+components:
+  schemas:
+    # Currently implemented response schemas
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "OK"
+        timestamp:
+          type: string
+          format: date-time
+        environment:
+          type: string
+          example: "development"
+        version:
+          type: string
+          example: "1.0.0"
+      required:
+        - status
+        - timestamp
+        - environment
+        - version
+
+    ApiInfoResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Welcome to Airavate Backend API"
+        version:
+          type: string
+          example: "1.0.0"
+        documentation:
+          type: string
+          example: "/api/v1/docs"
+
+    ApiV1InfoResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Airavate Backend API v1"
+        version:
+          type: string
+          example: "1.0.0"
+        endpoints:
+          type: object
+          properties:
+            auth:
+              type: string
+              example: "/api/v1/auth"
+            users:
+              type: string
+              example: "/api/v1/users"
+            health:
+              type: string
+              example: "/health"
+        documentation:
+          type: string
+          example: "/api/v1/docs"
+
+    NotImplementedResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "This endpoint is coming soon"
+        body:
+          type: object
+          nullable: true
+        params:
+          type: object
+          nullable: true
+        query:
+          type: object
+          nullable: true
+
+tags:
+  - name: Health
+    description: Health check and status endpoints
+  - name: General
+    description: General API information endpoints
+  - name: Authentication (Coming Soon)
+    description: User authentication endpoints (placeholder - not implemented)
+  - name: Users (Coming Soon)
+    description: User management endpoints (placeholder - not implemented)

@@ -1,0 +1,66 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model - Ready for Authentik integration
+model User {
+  id        String  @id @default(cuid())
+  email     String  @unique
+  username  String? @unique
+  firstName String?
+  lastName  String?
+  avatar    String?
+
+  // Auth fields (for local auth before Authentik)
+  password      String?
+  emailVerified Boolean @default(false)
+
+  // Authentik integration fields (for future)
+  authentikId String? @unique
+
+  // User preferences
+  isActive Boolean  @default(true)
+  role     UserRole @default(USER)
+
+  // Timestamps
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastLoginAt DateTime?
+
+  // Relations (for future features)
+  auditLogs AuditLog[]
+  // payments Payment[]
+
+  @@map("users")
+}
+
+// User roles enum
+enum UserRole {
+  USER
+  ADMIN
+  MODERATOR
+}
+
+// Example model for future features
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  resource  String
+  details   Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("audit_logs")
+}
