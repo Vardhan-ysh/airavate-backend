@@ -10,30 +10,38 @@ export class AuthController {
 
     public async register(req: Request, res: Response): Promise<Response> {
         try {
-            const userData = req.body;
-            const newUser = await this.authService.register(userData);
+            const { email, password } = req.body;
+            const newUser = await this.authService.register(email, password);
             return res.status(201).json(newUser);
         } catch (error) {
-            return res.status(500).json({ message: error.message });
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            return res.status(500).json({ message: errorMessage });
         }
     }
 
     public async login(req: Request, res: Response): Promise<Response> {
         try {
             const { email, password } = req.body;
-            const token = await this.authService.login(email, password);
-            return res.status(200).json({ token });
+            const user = await this.authService.login(email, password);
+            if (user) {
+                // In a real app, you'd create a JWT token here
+                return res.status(200).json({ user: { id: user.id, email: user.email } });
+            } else {
+                return res.status(401).json({ message: 'Invalid credentials' });
+            }
         } catch (error) {
-            return res.status(401).json({ message: error.message });
+            const errorMessage = error instanceof Error ? error.message : 'Login failed';
+            return res.status(401).json({ message: errorMessage });
         }
     }
 
     public async logout(req: Request, res: Response): Promise<Response> {
         try {
-            await this.authService.logout(req.user.id);
-            return res.status(204).send();
+            // In a stateless JWT system, logout is handled client-side
+            return res.status(200).json({ message: 'Logged out successfully' });
         } catch (error) {
-            return res.status(500).json({ message: error.message });
+            const errorMessage = error instanceof Error ? error.message : 'Logout failed';
+            return res.status(500).json({ message: errorMessage });
         }
     }
 }

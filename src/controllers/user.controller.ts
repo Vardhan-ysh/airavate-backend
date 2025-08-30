@@ -19,6 +19,9 @@ export class UserController {
 
     public async getUserById(req: Request, res: Response): Promise<Response> {
         const { id } = req.params;
+        if (!id) {
+            return res.status(400).json({ message: 'User ID is required' });
+        }
         try {
             const user = await this.userService.getUserById(id);
             if (!user) {
@@ -43,6 +46,9 @@ export class UserController {
     public async updateUser(req: Request, res: Response): Promise<Response> {
         const { id } = req.params;
         const userData = req.body;
+        if (!id) {
+            return res.status(400).json({ message: 'User ID is required' });
+        }
         try {
             const updatedUser = await this.userService.updateUser(id, userData);
             if (!updatedUser) {
@@ -56,6 +62,9 @@ export class UserController {
 
     public async deleteUser(req: Request, res: Response): Promise<Response> {
         const { id } = req.params;
+        if (!id) {
+            return res.status(400).json({ message: 'User ID is required' });
+        }
         try {
             const deletedUser = await this.userService.deleteUser(id);
             if (!deletedUser) {

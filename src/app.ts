@@ -1,9 +1,9 @@
 import express, { Application, Request, Response } from 'express';
-import environment from '@config/environment';
-import { connectToDatabase } from '@config/database';
-import { setupSwagger } from '@config/swagger';
-import routes from '@routes/index';
-import { errorMiddleware, notFoundMiddleware } from '@middleware/error.middleware';
+import environment from './config/environment';
+import { connectToDatabase } from './config/database';
+import { setupSwagger } from './config/swagger';
+import routes from './routes/index';
+import { errorMiddleware, notFoundMiddleware } from './middleware/error.middleware';
 
 class App {
   public app: Application;

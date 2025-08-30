@@ -14,6 +14,12 @@ interface Environment {
   RATE_LIMIT_MAX_REQUESTS: number;
   LOG_LEVEL: string;
   BCRYPT_ROUNDS: number;
+  // Authentik OAuth2/OpenID Configuration
+  AUTHENTIK_ISSUER: string;
+  AUTHENTIK_CLIENT_ID: string;
+  AUTHENTIK_CLIENT_SECRET: string;
+  AUTHENTIK_REDIRECT_URI: string;
+  AUTHENTIK_SCOPE: string;
 }
 
 const environment: Environment = {
@@ -28,6 +34,12 @@ const environment: Environment = {
   RATE_LIMIT_MAX_REQUESTS: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100', 10),
   LOG_LEVEL: process.env.LOG_LEVEL || 'info',
   BCRYPT_ROUNDS: parseInt(process.env.BCRYPT_ROUNDS || '12', 10),
+  // Authentik OAuth2/OpenID Configuration
+  AUTHENTIK_ISSUER: process.env.AUTHENTIK_ISSUER || 'http://localhost:9000/application/o/airavate-backend/',
+  AUTHENTIK_CLIENT_ID: process.env.AUTHENTIK_CLIENT_ID || '',
+  AUTHENTIK_CLIENT_SECRET: process.env.AUTHENTIK_CLIENT_SECRET || '',
+  AUTHENTIK_REDIRECT_URI: process.env.AUTHENTIK_REDIRECT_URI || 'http://localhost:3000/auth/callback',
+  AUTHENTIK_SCOPE: process.env.AUTHENTIK_SCOPE || 'openid profile email offline_access',
 };
 
 // Validate required environment variables
@@ -39,3 +51,4 @@ for (const envVar of requiredEnvVars) {
 }
 
 export default environment;
+export { environment as env };

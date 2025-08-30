@@ -2,23 +2,37 @@ openapi: 3.1.0
 info:
   title: Airavate Backend API
   description: |
-    Scalable production-grade backend API for Airavate project.
+    Scalable production-grade backend API for Airavate project with integrated OAuth2/OpenID Connect authentication via Authentik.
     
-    ## Current Status
-    This API is in initial setup phase. Currently only basic health check and info endpoints are available.
+    ## Features
+    - ✅ OAuth2/OpenID Connect Authentication (Authentik integration)
+    - ✅ User Management with JWT tokens
+    - ✅ Comprehensive Health Monitoring
+    - ✅ Audit Logging & Winston logging
+    - ✅ Rate Limiting & Security Headers
+    - ✅ CORS Support & Input Validation
+    - ✅ PostgreSQL with Prisma ORM
+    - ✅ Docker containerization
+    - 🔄 Payment Processing (Razorpay - Coming Soon)
     
-    ## Future Features
-    - JWT Authentication (ready for Authentik integration)
-    - User Management
-    - Payment Processing (Razorpay integration)
-    - Audit Logging
-    - Rate Limiting
-    - CORS Support
+    ## Authentication Flow
+    1. Redirect to `/api/v1/auth/login` to initiate OAuth2 flow
+    2. User authenticates via Authentik
+    3. Callback to `/api/v1/auth/callback` with authorization code
+    4. Exchange code for JWT access token
+    5. Use JWT token in `Authorization: Bearer <token>` header
     
-  version: 1.0.0
+    ## Security
+    - All authenticated endpoints require valid JWT token
+    - Rate limiting applied to all endpoints
+    - CORS configured for secure cross-origin requests
+    - Security headers enforced via Helmet middleware
+    
+  version: 2.0.0
   contact:
     name: Airavate Team
     email: admin@airavate.com
+    url: https://github.com/airavate/backend
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
@@ -26,8 +40,14 @@ info:
 servers:
   - url: http://localhost:3000
     description: Development server
+  - url: https://staging.airavate.com
+    description: Staging server
   - url: https://api.airavate.com
-    description: Production server (future)
+    description: Production server
+
+security:
+  - BearerAuth: []
+  - {}
 
 paths:
   # Health and Status
@@ -35,8 +55,10 @@ paths:
     get:
       tags:
         - Health
-      summary: Health check endpoint
-      description: Returns the health status of the API server
+      summary: Comprehensive health check
+      description: Returns the health status of the API server and all dependencies
+      operationId: getHealth
+      security: []
       responses:
         '200':
           description: Server is healthy
@@ -45,17 +67,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/HealthResponse'
               example:
-                status: "OK"
+                uptime: 3600.123
                 timestamp: "2025-08-30T15:30:00.000Z"
-                environment: "development"
-                version: "1.0.0"
+                status: "OK"
+                services:
+                  database: "healthy"
+                  authentik: "healthy"
+                  memory:
+                    rss: 52428800
+                    heapTotal: 29360128
+                    heapUsed: 18235392
+                  cpu:
+                    user: 123456
+                    system: 67890
+        '503':
+          description: Service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
 
   /:
     get:
       tags:
         - General
       summary: API root endpoint
-      description: Returns basic API information
+      description: Returns basic API information and available endpoints
+      operationId: getApiInfo
+      security: []
       responses:
         '200':
           description: API information
@@ -69,7 +108,9 @@ paths:
       tags:
         - General
       summary: API v1 information
-      description: Returns information about API v1 endpoints
+      description: Returns information about API v1 endpoints and authentication requirements
+      operationId: getApiV1Info
+      security: []
       responses:
         '200':
           description: API v1 information
@@ -78,174 +119,398 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiV1InfoResponse'
 
-  # Placeholder endpoints (501 Not Implemented)
-  /api/v1/auth/register:
-    post:
-      tags:
-        - Authentication (Coming Soon)
-      summary: Register endpoint (placeholder)
-      description: User registration endpoint - Coming soon
-      responses:
-        '501':
-          description: Not implemented yet
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NotImplementedResponse'
-
+  # Authentication Endpoints
   /api/v1/auth/login:
-    post:
+    get:
       tags:
-        - Authentication (Coming Soon)
-      summary: Login endpoint (placeholder)
-      description: User login endpoint - Coming soon
+        - Authentication
+      summary: Initiate OAuth2 authentication
+      description: |
+        Redirects user to Authentik OAuth2 authorization endpoint.
+        This starts the OAuth2 authorization code flow.
+      operationId: initiateAuth
+      security: []
+      parameters:
+        - name: redirect_uri
+          in: query
+          description: Optional custom redirect URI after successful authentication
+          schema:
+            type: string
+            format: uri
+            example: "https://app.airavate.com/dashboard"
       responses:
-        '501':
-          description: Not implemented yet
+        '302':
+          description: Redirect to Authentik authorization endpoint
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+              description: OAuth2 authorization URL
+        '500':
+          description: OAuth2 configuration error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/NotImplementedResponse'
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/auth/callback:
+    get:
+      tags:
+        - Authentication
+      summary: OAuth2 callback endpoint
+      description: |
+        Handles the OAuth2 callback from Authentik with authorization code.
+        Exchanges code for tokens and creates user session.
+      operationId: handleAuthCallback
+      security: []
+      parameters:
+        - name: code
+          in: query
+          required: true
+          description: OAuth2 authorization code from Authentik
+          schema:
+            type: string
+            example: "auth_code_12345"
+        - name: state
+          in: query
+          required: true
+          description: OAuth2 state parameter for CSRF protection
+          schema:
+            type: string
+            example: "random_state_value"
+        - name: error
+          in: query
+          description: OAuth2 error parameter if authentication failed
+          schema:
+            type: string
+            example: "access_denied"
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSuccessResponse'
+        '400':
+          description: Invalid authorization code or state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /api/v1/auth/logout:
     post:
       tags:
-        - Authentication (Coming Soon)
-      summary: Logout endpoint (placeholder)
-      description: User logout endpoint - Coming soon
+        - Authentication
+      summary: Logout user
+      description: |
+        Invalidates the current JWT token and optionally redirects to Authentik logout.
+        Supports both local token invalidation and global Authentik logout.
+      operationId: logout
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: global
+          in: query
+          description: Whether to perform global logout from Authentik
+          schema:
+            type: boolean
+            default: false
       responses:
-        '501':
-          description: Not implemented yet
+        '200':
+          description: Logout successful
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/NotImplementedResponse'
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Logout successful"
+                  global:
+                    type: boolean
+                    description: Whether global logout was performed
+                  logout_url:
+                    type: string
+                    format: uri
+                    description: Authentik logout URL (if global logout)
+        '401':
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
-  /api/v1/auth/me:
+  /api/v1/auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh JWT token
+      description: |
+        Refreshes an expired JWT token using the refresh token.
+        Returns a new access token if refresh token is valid.
+      operationId: refreshToken
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refresh_token
+              properties:
+                refresh_token:
+                  type: string
+                  description: Valid refresh token
+                  example: "refresh_token_12345"
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSuccessResponse'
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # User Management
+  /api/v1/users/profile:
     get:
       tags:
-        - Authentication (Coming Soon)
-      summary: Get profile endpoint (placeholder)
-      description: Get user profile endpoint - Coming soon
+        - Users
+      summary: Get current user profile
+      description: Returns the authenticated user's profile information
+      operationId: getCurrentUserProfile
+      security:
+        - BearerAuth: []
       responses:
-        '501':
-          description: Not implemented yet
+        '200':
+          description: User profile retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/NotImplementedResponse'
+                $ref: '#/components/schemas/UserProfile'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - Users
+      summary: Update user profile
+      description: Updates the authenticated user's profile information
+      operationId: updateUserProfile
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserProfileUpdate'
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /api/v1/users:
     get:
       tags:
-        - Users (Coming Soon)
-      summary: Get users endpoint (placeholder)
-      description: Get all users endpoint - Coming soon
+        - Users
+      summary: List users (Admin only)
+      description: Returns paginated list of users (admin access required)
+      operationId: listUsers
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: Page number (1-based)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Number of users per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: search
+          in: query
+          description: Search term for email or name
+          schema:
+            type: string
+            example: "john"
       responses:
-        '501':
-          description: Not implemented yet
+        '200':
+          description: Users retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/NotImplementedResponse'
-
-    post:
-      tags:
-        - Users (Coming Soon)
-      summary: Create user endpoint (placeholder)
-      description: Create user endpoint - Coming soon
-      responses:
-        '501':
-          description: Not implemented yet
+                $ref: '#/components/schemas/UserListResponse'
+        '401':
+          description: Authentication required
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/NotImplementedResponse'
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
-  /api/v1/users/{id}:
+  /api/v1/users/{userId}:
     get:
       tags:
-        - Users (Coming Soon)
-      summary: Get user by ID endpoint (placeholder)
-      description: Get user by ID endpoint - Coming soon
+        - Users
+      summary: Get user by ID (Admin only)
+      description: Returns user information by ID (admin access required)
+      operationId: getUserById
+      security:
+        - BearerAuth: []
       parameters:
-        - name: id
+        - name: userId
           in: path
           required: true
           description: User ID
           schema:
             type: string
+            example: "clm7k8x9y0000123456789"
       responses:
-        '501':
-          description: Not implemented yet
+        '200':
+          description: User retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/NotImplementedResponse'
-
-    put:
-      tags:
-        - Users (Coming Soon)
-      summary: Update user endpoint (placeholder)
-      description: Update user endpoint - Coming soon
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: User ID
-          schema:
-            type: string
-      responses:
-        '501':
-          description: Not implemented yet
+                $ref: '#/components/schemas/UserProfile'
+        '401':
+          description: Authentication required
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/NotImplementedResponse'
-
-    delete:
-      tags:
-        - Users (Coming Soon)
-      summary: Delete user endpoint (placeholder)
-      description: Delete user endpoint - Coming soon
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: User ID
-          schema:
-            type: string
-      responses:
-        '501':
-          description: Not implemented yet
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Admin access required
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/NotImplementedResponse'
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
 components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from OAuth2 authentication flow
+
   schemas:
-    # Currently implemented response schemas
+    # Health and Status Schemas
     HealthResponse:
       type: object
       properties:
-        status:
-          type: string
-          example: "OK"
+        uptime:
+          type: number
+          description: Server uptime in seconds
+          example: 3600.123
         timestamp:
           type: string
           format: date-time
-        environment:
+          description: Current server timestamp
+        status:
           type: string
-          example: "development"
-        version:
-          type: string
-          example: "1.0.0"
+          enum: [OK, ERROR]
+          description: Overall health status
+        services:
+          type: object
+          properties:
+            database:
+              type: string
+              enum: [healthy, unhealthy, unknown]
+              description: Database connection status
+            authentik:
+              type: string
+              enum: [healthy, unhealthy, unknown]
+              description: Authentik service status
+            memory:
+              type: object
+              properties:
+                rss:
+                  type: integer
+                  description: Resident Set Size
+                heapTotal:
+                  type: integer
+                  description: Total heap size
+                heapUsed:
+                  type: integer
+                  description: Used heap size
+            cpu:
+              type: object
+              properties:
+                user:
+                  type: integer
+                  description: User CPU time
+                system:
+                  type: integer
+                  description: System CPU time
       required:
-        - status
+        - uptime
         - timestamp
-        - environment
-        - version
+        - status
+        - services
 
     ApiInfoResponse:
       type: object
@@ -255,10 +520,22 @@ components:
           example: "Welcome to Airavate Backend API"
         version:
           type: string
-          example: "1.0.0"
+          example: "2.0.0"
         documentation:
           type: string
-          example: "/api/v1/docs"
+          example: "/docs"
+        endpoints:
+          type: object
+          properties:
+            health:
+              type: string
+              example: "/health"
+            api:
+              type: string
+              example: "/api/v1"
+            docs:
+              type: string
+              example: "/docs"
 
     ApiV1InfoResponse:
       type: object
@@ -268,45 +545,263 @@ components:
           example: "Airavate Backend API v1"
         version:
           type: string
-          example: "1.0.0"
+          example: "2.0.0"
+        authentication:
+          type: object
+          properties:
+            type:
+              type: string
+              example: "OAuth2/OpenID Connect (Authentik)"
+            endpoints:
+              type: object
+              properties:
+                login:
+                  type: string
+                  example: "/api/v1/auth/login"
+                callback:
+                  type: string
+                  example: "/api/v1/auth/callback"
+                logout:
+                  type: string
+                  example: "/api/v1/auth/logout"
+                refresh:
+                  type: string
+                  example: "/api/v1/auth/refresh"
         endpoints:
           type: object
           properties:
-            auth:
-              type: string
-              example: "/api/v1/auth"
             users:
               type: string
               example: "/api/v1/users"
-            health:
+            profile:
               type: string
-              example: "/health"
+              example: "/api/v1/users/profile"
         documentation:
           type: string
-          example: "/api/v1/docs"
+          example: "/docs"
 
-    NotImplementedResponse:
+    # Authentication Schemas
+    AuthSuccessResponse:
       type: object
       properties:
         message:
           type: string
-          example: "This endpoint is coming soon"
-        body:
+          example: "Authentication successful"
+        user:
+          $ref: '#/components/schemas/UserProfile'
+        tokens:
           type: object
-          nullable: true
-        params:
+          properties:
+            access_token:
+              type: string
+              description: JWT access token
+              example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+            refresh_token:
+              type: string
+              description: Refresh token for token renewal
+              example: "refresh_token_12345"
+            token_type:
+              type: string
+              example: "Bearer"
+            expires_in:
+              type: integer
+              description: Token expiration time in seconds
+              example: 3600
+        redirect_url:
+          type: string
+          format: uri
+          description: Optional redirect URL after successful authentication
+          example: "https://app.airavate.com/dashboard"
+      required:
+        - message
+        - user
+        - tokens
+
+    # User Schemas
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique user identifier
+          example: "clm7k8x9y0000123456789"
+        email:
+          type: string
+          format: email
+          description: User's email address
+          example: "user@example.com"
+        name:
+          type: string
+          description: User's full name
+          example: "John Doe"
+        preferred_username:
+          type: string
+          description: User's preferred username
+          example: "johndoe"
+        given_name:
+          type: string
+          description: User's first name
+          example: "John"
+        family_name:
+          type: string
+          description: User's last name
+          example: "Doe"
+        picture:
+          type: string
+          format: uri
+          description: URL to user's profile picture
+          example: "https://auth.airavate.com/media/avatars/user.jpg"
+        email_verified:
+          type: boolean
+          description: Whether user's email is verified
+          example: true
+        locale:
+          type: string
+          description: User's locale preference
+          example: "en-US"
+        groups:
+          type: array
+          items:
+            type: string
+          description: User's group memberships
+          example: ["users", "premium"]
+        roles:
+          type: array
+          items:
+            type: string
+          description: User's role assignments
+          example: ["user", "admin"]
+        created_at:
+          type: string
+          format: date-time
+          description: Account creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last profile update timestamp
+        last_login:
+          type: string
+          format: date-time
+          description: Last login timestamp
+      required:
+        - id
+        - email
+        - name
+        - email_verified
+        - created_at
+        - updated_at
+
+    UserProfileUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          description: User's full name
+          example: "John Doe"
+        preferred_username:
+          type: string
+          description: User's preferred username
+          example: "johndoe"
+        given_name:
+          type: string
+          description: User's first name
+          example: "John"
+        family_name:
+          type: string
+          description: User's last name
+          example: "Doe"
+        locale:
+          type: string
+          description: User's locale preference
+          example: "en-US"
+      additionalProperties: false
+
+    UserListResponse:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserProfile'
+        pagination:
           type: object
-          nullable: true
-        query:
+          properties:
+            page:
+              type: integer
+              minimum: 1
+              description: Current page number
+              example: 1
+            limit:
+              type: integer
+              minimum: 1
+              maximum: 100
+              description: Number of items per page
+              example: 20
+            total:
+              type: integer
+              minimum: 0
+              description: Total number of users
+              example: 150
+            pages:
+              type: integer
+              minimum: 0
+              description: Total number of pages
+              example: 8
+            has_next:
+              type: boolean
+              description: Whether there are more pages
+              example: true
+            has_prev:
+              type: boolean
+              description: Whether there are previous pages
+              example: false
+      required:
+        - users
+        - pagination
+
+    # Error Schemas
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error type or code
+          example: "AUTHENTICATION_FAILED"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Invalid or expired token"
+        details:
           type: object
-          nullable: true
+          description: Additional error details
+          additionalProperties: true
+        timestamp:
+          type: string
+          format: date-time
+          description: Error timestamp
+        path:
+          type: string
+          description: Request path that caused the error
+          example: "/api/v1/users/profile"
+        request_id:
+          type: string
+          description: Unique request identifier for debugging
+          example: "req_12345"
+      required:
+        - error
+        - message
+        - timestamp
 
 tags:
   - name: Health
-    description: Health check and status endpoints
+    description: Health check and monitoring endpoints
   - name: General
-    description: General API information endpoints
-  - name: Authentication (Coming Soon)
-    description: User authentication endpoints (placeholder - not implemented)
-  - name: Users (Coming Soon)
-    description: User management endpoints (placeholder - not implemented)
+    description: General API information and documentation endpoints
+  - name: Authentication
+    description: OAuth2/OpenID Connect authentication with Authentik
+  - name: Users
+    description: User management and profile endpoints
+
+externalDocs:
+  description: Find more info about Airavate Backend
+  url: https://github.com/airavate/backend

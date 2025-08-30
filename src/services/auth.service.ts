@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
-import { hash, compare } from 'bcrypt';
-import { User } from '../types/auth.types';
+import { hash, compare } from 'bcryptjs';
+import { User } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -21,7 +21,7 @@ export class AuthService {
             where: { email },
         });
 
-        if (user && await compare(password, user.password)) {
+        if (user && user.password && await compare(password, user.password)) {
             return user;
         }
         return null;

@@ -1,5 +1,5 @@
 import App from './app';
-import environment from '@config/environment';
+import environment from './config/environment';
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (error: Error) => {

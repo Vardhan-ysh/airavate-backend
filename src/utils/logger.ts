@@ -1,5 +1,5 @@
 import { createLogger, format, transports } from 'winston';
-import environment from '@config/environment';
+import environment from '../config/environment';
 
 // Define log levels
 const levels = {

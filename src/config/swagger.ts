@@ -3,7 +3,7 @@ import swaggerUi from 'swagger-ui-express';
 import YAML from 'yamljs';
 import path from 'path';
 import { Application } from 'express';
-import environment from '@config/environment';
+import environment from './environment';
 
 // Load OpenAPI specification from YAML file
 const openApiSpec = YAML.load(path.join(__dirname, '../../docs/openapi.yaml'));

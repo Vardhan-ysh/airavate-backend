@@ -153,6 +153,14 @@ temp/
 *.sqlite
 *.db
 
+# Auto-generated Prisma files
+prisma/*.d.ts
+prisma/*.d.ts.map
+prisma/*.js
+prisma/*.js.map
+!prisma/schema.prisma
+!prisma/seed.ts
+
 # SSL certificates
 *.pem
 *.key
@@ -163,6 +171,15 @@ uploads/
 
 # Cache
 .cache/
+
+# prompt files
+prompt.prompt.md
+
+# Authentik data directories (only for development)
+authentik/media/
+authentik/certs/
+authentik/custom-templates/
+authentik/.env
 
 # Lock files (choose one)
 # package-lock.json

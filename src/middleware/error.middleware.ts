@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import environment from '@config/environment';
+import environment from '../config/environment';
 
 interface CustomError extends Error {
   status?: number;

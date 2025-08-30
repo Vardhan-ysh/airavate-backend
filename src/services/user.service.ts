@@ -10,20 +10,20 @@ export class UserService {
         });
     }
 
-    async getUserById(id: number) {
+    async getUserById(id: string) {
         return await prisma.user.findUnique({
             where: { id },
         });
     }
 
-    async updateUser(id: number, data: Partial<User>) {
+    async updateUser(id: string, data: Partial<User>) {
         return await prisma.user.update({
             where: { id },
             data,
         });
     }
 
-    async deleteUser(id: number) {
+    async deleteUser(id: string) {
         return await prisma.user.delete({
             where: { id },
         });
