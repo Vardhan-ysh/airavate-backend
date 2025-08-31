@@ -5,9 +5,10 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "powershell -ExecutionPolicy Bypass -File .\\start-dev.ps1 && npm run dev:backend-only",
-    "dev:backend-only": "tsx watch src/server.ts",
+    "dev:backend-only": "NODE_ENV=development tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
+    "start:dev": "NODE_ENV=development node dist/server.js",
     "start:prod": "NODE_ENV=production node dist/server.js",
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",

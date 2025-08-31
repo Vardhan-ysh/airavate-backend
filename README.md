@@ -209,9 +209,525 @@ model User {
 7. **JWT Token**: Backend issues JWT for subsequent requests
 8. **Protected Routes**: JWT required for protected endpoints
 
-## 🚀 Complete Setup Instructions
+## 🚀 Complete Setup Guide for First-Time Users
 
 ### Prerequisites
+- **Node.js** 18+ and npm
+- **Docker** and Docker Compose
+- **PostgreSQL** database (we recommend [Neon](https://neon.tech) for development)
+- **PowerShell** (for Windows setup scripts)
+- **Google OAuth Credentials** (if using Google authentication)
+
+### 1. Clone Repository
+```bash
+git clone https://github.com/Vardhan-ysh/airavate-backend.git
+cd airavate-backend
+```
+
+### 2. Install Dependencies
+```bash
+npm install
+```
+
+### 3. Environment Files Setup
+
+The project uses environment-specific configuration files. You'll need to create three main environment files:
+
+#### 3.1 Create Base Environment File (`.env`)
+```bash
+# Environment
+NODE_ENV=development
+
+# Server
+PORT=3000
+HOST=localhost
+
+# Database (Replace with your Neon PostgreSQL connection string)
+DATABASE_URL="postgresql://username:password@your-neon-host/database?sslmode=require"
+
+# JWT Configuration (Generate a secure secret)
+JWT_SECRET=your-super-secure-jwt-secret-key-at-least-32-characters-long
+JWT_EXPIRES_IN=7d
+
+# CORS
+CORS_ORIGIN=http://localhost:3000
+
+# Rate Limiting
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
+
+# Logging
+LOG_LEVEL=info
+PRISMA_LOG_LEVEL=info
+
+# Security
+BCRYPT_ROUNDS=12
+
+# Authentik OAuth2/OpenID Configuration (will be populated after Authentik setup)
+AUTHENTIK_ISSUER=http://localhost:9000/application/o/airavate-backend/
+AUTHENTIK_CLIENT_ID=your-authentik-client-id-here
+AUTHENTIK_CLIENT_SECRET=your-authentik-client-secret-here
+AUTHENTIK_REDIRECT_URI=http://localhost:3000/api/v1/auth/oauth/callback
+AUTHENTIK_SCOPE=openid profile email
+
+# Environment URLs (defaults - overridden by environment-specific files)
+BACKEND_URL=http://localhost:3000
+FRONTEND_URL=http://localhost:5173
+AUTH_URL=http://localhost:9000
+GRAFANA_URL=http://localhost:3001
+PROMETHEUS_URL=http://localhost:9090
+
+# For future integrations
+# RAZORPAY_KEY_ID=your-razorpay-key-id
+# RAZORPAY_KEY_SECRET=your-razorpay-key-secret
+```
+
+#### 3.2 Create Development Environment File (`.env.development`)
+```bash
+# Development Environment Configuration
+# Local development settings
+
+# =============================================================================
+# APPLICATION CONFIGURATION
+# =============================================================================
+NODE_ENV=development
+PORT=3000
+API_VERSION=1.0.0
+
+# =============================================================================
+# DATABASE CONFIGURATION (Neon PostgreSQL)
+# =============================================================================
+DATABASE_URL=your_neon_database_connection_string_here
+
+# =============================================================================
+# AUTHENTICATION & SECURITY
+# =============================================================================
+JWT_SECRET=dev_jwt_secret_key_change_in_production
+JWT_EXPIRES_IN=24h
+
+# =============================================================================
+# AUTHENTIK OAUTH2 CONFIGURATION (Local)
+# =============================================================================
+AUTHENTIK_ISSUER=http://localhost:9000/application/o/airavate-backend/
+AUTHENTIK_CLIENT_ID=your-authentik-client-id-here
+AUTHENTIK_CLIENT_SECRET=your-authentik-client-secret-here
+AUTHENTIK_REDIRECT_URI=http://localhost:3000/api/v1/auth/oauth/callback
+AUTHENTIK_SCOPE=openid profile email
+
+# =============================================================================
+# GOOGLE OAUTH2 CREDENTIALS (for Authentik Google Source)
+# =============================================================================
+GOOGLE_OAUTH_CLIENT_ID=your-google-oauth-client-id-here
+GOOGLE_OAUTH_CLIENT_SECRET=your-google-oauth-client-secret-here
+
+# =============================================================================
+# CORS CONFIGURATION
+# =============================================================================
+CORS_ORIGIN=http://localhost:3000
+
+# =============================================================================
+# LOGGING CONFIGURATION
+# =============================================================================
+LOG_LEVEL=debug
+LOG_FORMAT=simple
+
+# =============================================================================
+# HEALTH CHECK CONFIGURATION
+# =============================================================================
+HEALTH_CHECK_TIMEOUT=5000
+HEALTH_CHECK_INTERVAL=30000
+
+# =============================================================================
+# RATE LIMITING (More lenient for development)
+# =============================================================================
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=1000
+
+# =============================================================================
+# SWAGGER/OPENAPI CONFIGURATION
+# =============================================================================
+SWAGGER_ENABLED=true
+SWAGGER_PATH=/api-docs
+
+# =============================================================================
+# ENVIRONMENT URLs
+# =============================================================================
+BACKEND_URL=http://localhost:3000
+FRONTEND_URL=http://localhost:5173
+AUTH_URL=http://localhost:9000
+GRAFANA_URL=http://localhost:3001
+PROMETHEUS_URL=http://localhost:9090
+```
+
+#### 3.3 Create Production Environment File (`.env.production`)
+```bash
+# Production Environment Configuration
+# Production-optimized settings
+
+# =============================================================================
+# APPLICATION CONFIGURATION
+# =============================================================================
+NODE_ENV=production
+PORT=3000
+API_VERSION=1.0.0
+
+# =============================================================================
+# DATABASE CONFIGURATION
+# =============================================================================
+# In production, use environment variables or secure secret management
+DATABASE_URL=your_production_database_url_here
+
+# =============================================================================
+# AUTHENTICATION & SECURITY
+# =============================================================================
+# In production, use strong, randomly generated secrets
+JWT_SECRET=your_production_jwt_secret_here
+JWT_EXPIRES_IN=24h
+
+# =============================================================================
+# AUTHENTIK OAUTH2 CONFIGURATION (Production)
+# =============================================================================
+AUTHENTIK_ISSUER=https://auth.airavate.in/application/o/airavate-backend/
+AUTHENTIK_CLIENT_ID=your_production_authentik_client_id_here
+AUTHENTIK_CLIENT_SECRET=your_production_authentik_client_secret_here
+AUTHENTIK_REDIRECT_URI=https://airavate.in/api/v1/auth/oauth/callback
+AUTHENTIK_SCOPE=openid profile email
+
+# =============================================================================
+# GOOGLE OAUTH2 CREDENTIALS (Production)
+# =============================================================================
+GOOGLE_OAUTH_CLIENT_ID=your_production_google_client_id_here
+GOOGLE_OAUTH_CLIENT_SECRET=your_production_google_client_secret_here
+
+# =============================================================================
+# CORS CONFIGURATION
+# =============================================================================
+CORS_ORIGIN=https://airavate.in
+
+# =============================================================================
+# LOGGING CONFIGURATION
+# =============================================================================
+LOG_LEVEL=warn
+LOG_FORMAT=json
+
+# =============================================================================
+# HEALTH CHECK CONFIGURATION
+# =============================================================================
+HEALTH_CHECK_TIMEOUT=5000
+HEALTH_CHECK_INTERVAL=30000
+
+# =============================================================================
+# RATE LIMITING (Production - more restrictive)
+# =============================================================================
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
+
+# =============================================================================
+# SECURITY
+# =============================================================================
+BCRYPT_ROUNDS=14
+
+# =============================================================================
+# SWAGGER/OPENAPI CONFIGURATION
+# =============================================================================
+SWAGGER_ENABLED=false
+SWAGGER_PATH=/api-docs
+
+# =============================================================================
+# MONITORING & OBSERVABILITY
+# =============================================================================
+METRICS_ENABLED=true
+PROMETHEUS_PORT=9090
+
+# =============================================================================
+# ENVIRONMENT URLs
+# =============================================================================
+BACKEND_URL=https://airavate.in
+FRONTEND_URL=https://app.airavate.in
+AUTH_URL=https://auth.airavate.in
+GRAFANA_URL=https://grafana.airavate.in
+PROMETHEUS_URL=https://prometheus.airavate.in
+```
+
+#### 3.4 Create Authentik Environment File (`authentik/.env`)
+```bash
+# PostgreSQL Database (Authentik's internal database)
+PG_PASS=authentik_secure_password_change_me_to_something_strong
+PG_USER=authentik
+PG_DB=authentik
+
+# Authentik Configuration
+AUTHENTIK_SECRET_KEY=generate-a-secure-50-character-secret-key-here-use-openssl-rand-hex-25
+AUTHENTIK_ERROR_REPORTING__ENABLED=false
+AUTHENTIK_DISABLE_UPDATE_CHECK=true
+AUTHENTIK_DISABLE_STARTUP_ANALYTICS=true
+
+# Email Configuration (Optional - for password resets)
+AUTHENTIK_EMAIL__HOST=smtp.gmail.com
+AUTHENTIK_EMAIL__PORT=587
+AUTHENTIK_EMAIL__USERNAME=your-email@gmail.com
+AUTHENTIK_EMAIL__PASSWORD=your-gmail-app-password
+AUTHENTIK_EMAIL__USE_TLS=true
+AUTHENTIK_EMAIL__USE_SSL=false
+AUTHENTIK_EMAIL__FROM=authentik@yourdomain.com
+```
+
+### 4. Database Setup
+
+#### 4.1 Create Neon Database
+1. Sign up at [Neon](https://neon.tech)
+2. Create a new project
+3. Copy the connection string
+4. Update `DATABASE_URL` in your `.env` files
+
+#### 4.2 Setup Database Schema
+```bash
+# Generate Prisma client
+npx prisma generate
+
+# Run database migrations
+npx prisma migrate dev --name initial
+
+# Optional: Seed database with sample data
+npx prisma db seed
+```
+
+### 5. Start Authentik Authentication Server
+
+#### 5.1 Start Services
+```bash
+# Navigate to authentik directory
+cd authentik
+
+# Start Authentik services
+docker-compose up -d
+
+# Check if services are running (wait 2-3 minutes for full startup)
+docker-compose ps
+
+# View logs if needed
+docker-compose logs -f
+```
+
+#### 5.2 Verify Authentik is Running
+- **Admin Panel**: http://localhost:9000/if/admin/
+- **User Portal**: http://localhost:9000
+- **Default Credentials**: `akadmin` / `admin123!`
+
+### 6. Configure Google OAuth (Optional but Recommended)
+
+#### 6.1 Create Google OAuth Credentials
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select existing
+3. Enable Google+ API
+4. Go to Credentials → Create Credentials → OAuth 2.0 Client ID
+5. Set Authorized redirect URI: `http://localhost:9000/source/oauth/callback/google/`
+6. Copy Client ID and Client Secret
+
+#### 6.2 Update Environment Files
+Add Google credentials to `.env.development`:
+```bash
+GOOGLE_OAUTH_CLIENT_ID=your-google-client-id-here.apps.googleusercontent.com
+GOOGLE_OAUTH_CLIENT_SECRET=your-google-client-secret-here
+```
+
+### 7. Configure Authentik OAuth Setup
+
+#### 7.1 Access Authentik Admin Panel
+1. **Open**: http://localhost:9000/if/admin/
+2. **Login**: `akadmin` / `admin123!`
+
+#### 7.2 Create Google OAuth Source (Optional)
+1. **Navigate**: Directory → Federation & Social login
+2. **Create Source**: Google
+3. **Configure**:
+   - **Name**: `Google OAuth`
+   - **Slug**: `google`
+   - **Consumer key**: Your Google OAuth Client ID
+   - **Consumer secret**: Your Google OAuth Client Secret
+   - **Provider settings**: Leave default
+4. **Save**
+
+#### 7.3 Create OAuth2 Provider for Backend
+1. **Navigate**: Applications → Providers
+2. **Create Provider**: OAuth2/OpenID Provider
+3. **Configure**:
+   - **Name**: `Airavate Backend OAuth`
+   - **Client type**: `Confidential`
+   - **Client ID**: (auto-generated, copy this)
+   - **Client Secret**: (auto-generated, copy this)
+   - **Redirect URIs**: `http://localhost:3000/api/v1/auth/oauth/callback`
+   - **Scopes**: `openid profile email offline_access`
+4. **Save** and **copy the Client ID and Client Secret**
+
+#### 7.4 Create Application
+1. **Navigate**: Applications → Applications
+2. **Create Application**:
+   - **Name**: `Airavate Backend`
+   - **Slug**: `airavate-backend`
+   - **Provider**: Select the provider created in step 7.3
+   - **Policy engine mode**: `any`
+3. **Save**
+
+#### 7.5 Update Backend Environment Variables
+Copy the Client ID and Secret to your environment files:
+
+**Update `.env`:**
+```bash
+AUTHENTIK_CLIENT_ID="your-copied-client-id-from-step-7.3"
+AUTHENTIK_CLIENT_SECRET="your-copied-client-secret-from-step-7.3"
+```
+
+**Update `.env.development`:**
+```bash
+AUTHENTIK_CLIENT_ID="your-copied-client-id-from-step-7.3"
+AUTHENTIK_CLIENT_SECRET="your-copied-client-secret-from-step-7.3"
+```
+
+### 8. Setup Monitoring Stack (Optional)
+
+#### 8.1 Start Prometheus & Grafana
+```bash
+# From project root
+cd monitoring
+docker-compose up -d
+
+# Verify services
+docker-compose ps
+```
+
+#### 8.2 Access Monitoring
+- **Prometheus**: http://localhost:9090
+- **Grafana**: http://localhost:3001 (admin/admin)
+
+#### 8.3 Import Grafana Dashboard
+1. Login to Grafana: http://localhost:3001
+2. Go to Dashboards → Import
+3. Upload `monitoring/grafana/provisioning/dashboards/airavate-backend.json`
+
+### 9. Start Development Server
+
+#### Option A: Automated Start (Recommended)
+```bash
+# This script checks all services and starts them if needed
+./start-dev.ps1
+```
+
+#### Option B: Manual Start
+```bash
+# Ensure all services are running first:
+# 1. Authentik (from authentik/ directory)
+docker-compose up -d
+
+# 2. Monitoring (from monitoring/ directory) - Optional
+docker-compose up -d
+
+# 3. Start Backend (from project root)
+npm run dev
+```
+
+### 10. Verify Complete Setup
+
+#### 10.1 Check All Services Status
+- ✅ **Backend API**: http://localhost:3000/api/v1/health
+- ✅ **API Documentation**: http://localhost:3000/api/v1/docs  
+- ✅ **Authentik Admin**: http://localhost:9000/if/admin/
+- ✅ **Authentik User Portal**: http://localhost:9000
+- ✅ **Prometheus** (Optional): http://localhost:9090
+- ✅ **Grafana** (Optional): http://localhost:3001
+
+#### 10.2 Test Authentication Endpoints
+
+**Test Health Check:**
+```bash
+curl http://localhost:3000/api/v1/health
+```
+
+**Test Email/Password Registration:**
+```bash
+curl -X POST http://localhost:3000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "test@example.com",
+    "password": "TestPassword123!",
+    "firstName": "Test",
+    "lastName": "User"
+  }'
+```
+
+**Test Email/Password Login:**
+```bash
+curl -X POST http://localhost:3000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "test@example.com",
+    "password": "TestPassword123!"
+  }'
+```
+
+**Test Google OAuth URL Generation:**
+```bash
+curl http://localhost:3000/api/v1/auth/oauth/google
+```
+
+**Test Protected Route (use token from login response):**
+```bash
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN_HERE" \
+  http://localhost:3000/api/v1/auth/me
+```
+
+### 11. Troubleshooting Common Issues
+
+#### 11.1 Authentik Not Starting
+```bash
+# Check logs
+cd authentik
+docker-compose logs -f
+
+# Restart services
+docker-compose down
+docker-compose up -d
+```
+
+#### 11.2 Database Connection Issues
+- Verify DATABASE_URL format
+- Check Neon database is active
+- Ensure IP is whitelisted in Neon
+
+#### 11.3 Environment Variables Not Loading
+- Ensure `.env` files are in correct locations
+- Check file names exactly match (`.env.development` not `.env.dev`)
+- Restart the development server
+
+#### 11.4 OAuth Setup Issues
+- Verify Authentik Client ID/Secret are correct
+- Check redirect URIs match exactly
+- Ensure Authentik application is active
+
+### 12. Production Deployment Notes
+
+When deploying to production:
+
+1. **Update Environment**: Set `NODE_ENV=production`
+2. **Use Production Secrets**: Generate strong, unique secrets
+3. **Configure Production URLs**: Update all URLs in `.env.production`
+4. **Enable HTTPS**: Use SSL certificates for all services
+5. **Secure Database**: Use production PostgreSQL with proper access controls
+6. **Monitor**: Enable logging and monitoring
+7. **Backup**: Set up automated database backups
+
+### 🎉 Congratulations!
+
+Your Airavate backend is now fully configured with:
+- ✅ Dual authentication (Email/Password + Google OAuth)
+- ✅ JWT-based session management
+- ✅ Comprehensive API documentation
+- ✅ Optional monitoring stack
+- ✅ Production-ready environment configuration
+
+You can now start building your frontend application! 🚀
+
+## 🧪 Testing
 - **Node.js** 18+ and npm
 - **Docker** and Docker Compose
 - **PostgreSQL** database (we recommend Neon for cost-effectiveness)

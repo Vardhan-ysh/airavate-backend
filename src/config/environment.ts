@@ -1,6 +1,17 @@
 import { config } from 'dotenv';
+import path from 'path';
 
-config();
+// Load environment-specific .env file based on NODE_ENV
+const NODE_ENV = process.env.NODE_ENV || 'development';
+const envFile = `.env.${NODE_ENV}`;
+const envPath = path.resolve(process.cwd(), envFile);
+
+// Load environment-specific file first, then base .env (so base doesn't override)
+config({ path: envPath }); // Load .env.{environment} first
+config(); // Load .env as fallback for missing variables
+
+console.log(`🌍 Environment: ${NODE_ENV}`);
+console.log(`📁 Loading env from: ${envPath}`);
 
 interface Environment {
   NODE_ENV: string;
@@ -20,6 +31,12 @@ interface Environment {
   AUTHENTIK_CLIENT_SECRET: string;
   AUTHENTIK_REDIRECT_URI: string;
   AUTHENTIK_SCOPE: string;
+  // Environment-specific URLs
+  BACKEND_URL: string;
+  FRONTEND_URL: string;
+  AUTH_URL: string;
+  GRAFANA_URL: string;
+  PROMETHEUS_URL: string;
 }
 
 const environment: Environment = {
@@ -40,30 +57,24 @@ const environment: Environment = {
   AUTHENTIK_CLIENT_SECRET: process.env.AUTHENTIK_CLIENT_SECRET || '',
   AUTHENTIK_REDIRECT_URI: process.env.AUTHENTIK_REDIRECT_URI || 'http://localhost:3000/auth/callback',
   AUTHENTIK_SCOPE: process.env.AUTHENTIK_SCOPE || 'openid profile email offline_access',
+  // Environment-specific URLs
+  BACKEND_URL: process.env.BACKEND_URL || 'http://localhost:3000',
+  FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5173',
+  AUTH_URL: process.env.AUTH_URL || 'http://localhost:9000',
+  GRAFANA_URL: process.env.GRAFANA_URL || 'http://localhost:3001',
+  PROMETHEUS_URL: process.env.PROMETHEUS_URL || 'http://localhost:9090',
 };
 
-// Helper function to get environment-specific URLs
+// Helper function to get environment URLs (now pulled from env vars)
 export const getEnvironmentUrls = () => {
-  const isProduction = environment.NODE_ENV === 'production';
-  
   return {
-    // Backend URLs
-    backendUrl: isProduction ? 'https://airavate.in' : 'http://localhost:3000',
-    // Frontend URLs (will be separate frontend project)
-    frontendUrl: isProduction ? 'https://app.airavate.in' : 'http://localhost:5173',
-    // Auth URLs
-    authUrl: isProduction ? 'https://auth.airavate.in' : 'http://localhost:9000',
-    // Monitoring URLs (development only)
-    grafanaUrl: 'http://localhost:3001',
-    prometheusUrl: 'http://localhost:9090',
-    // OAuth redirect URI
-    oauthRedirectUri: isProduction 
-      ? 'https://airavate.in/api/v1/auth/callback'
-      : 'http://localhost:3000/api/v1/auth/callback',
-    // Authentik issuer
-    authentikIssuer: isProduction
-      ? 'https://auth.airavate.in/application/o/airavate-backend/'
-      : 'http://localhost:9000/application/o/airavate-backend/',
+    backendUrl: environment.BACKEND_URL,
+    frontendUrl: environment.FRONTEND_URL,
+    authUrl: environment.AUTH_URL,
+    grafanaUrl: environment.GRAFANA_URL,
+    prometheusUrl: environment.PROMETHEUS_URL,
+    oauthRedirectUri: environment.AUTHENTIK_REDIRECT_URI,
+    authentikIssuer: environment.AUTHENTIK_ISSUER,
   };
 };
 
