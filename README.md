@@ -231,213 +231,151 @@ npm install
 
 ### 3. Environment Files Setup
 
-The project uses environment-specific configuration files. You'll need to create three main environment files:
+The project uses a clean environment file structure with base templates and environment-specific examples:
 
-#### 3.1 Create Base Environment File (`.env`)
+```
+.env                           # Your actual environment variables (copied from templates)
+.env.example                  # Base template with generic placeholders
+.env.development.example      # Development-specific template
+.env.production.example       # Production-specific template
+```
+
+#### 3.1 Create Your Base Environment File
+
+Copy the base template to create your main `.env` file:
+
 ```bash
-# Environment
-NODE_ENV=development
+# Copy the base template
+cp .env.example .env
+```
 
-# Server
+Then edit `.env` with your actual values. For development, you can also reference `.env.development.example` for development-specific settings.
+
+#### 3.2 Environment File Examples
+
+**Base Template (`.env.example`):**
+```bash
+# Base Environment Configuration for Airavate Backend API
+# This is a base template - copy to .env and customize
+# For environment-specific examples, see .env.development.example and .env.production.example
+
+NODE_ENV=development
 PORT=3000
 HOST=localhost
 
-# Database (Replace with your Neon PostgreSQL connection string)
-DATABASE_URL="postgresql://username:password@your-neon-host/database?sslmode=require"
+DATABASE_URL="postgresql://username:password@host:port/database?schema=public"
 
-# JWT Configuration (Generate a secure secret)
-JWT_SECRET=your-super-secure-jwt-secret-key-at-least-32-characters-long
+JWT_SECRET="your-jwt-secret-key-minimum-64-characters"
 JWT_EXPIRES_IN=7d
 
-# CORS
 CORS_ORIGIN=http://localhost:3000
 
-# Rate Limiting
-RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_WINDOW_MS=900000  # 15 minutes
 RATE_LIMIT_MAX_REQUESTS=100
 
-# Logging
 LOG_LEVEL=info
 PRISMA_LOG_LEVEL=info
 
-# Security
 BCRYPT_ROUNDS=12
 
-# Authentik OAuth2/OpenID Configuration (will be populated after Authentik setup)
-AUTHENTIK_ISSUER=http://localhost:9000/application/o/airavate-backend/
-AUTHENTIK_CLIENT_ID=your-authentik-client-id-here
-AUTHENTIK_CLIENT_SECRET=your-authentik-client-secret-here
-AUTHENTIK_REDIRECT_URI=http://localhost:3000/api/v1/auth/oauth/callback
-AUTHENTIK_SCOPE=openid profile email
+AUTHENTIK_ISSUER=https://your-authentik-domain/application/o/your-app/
+AUTHENTIK_CLIENT_ID=your_authentik_client_id
+AUTHENTIK_CLIENT_SECRET=your_authentik_client_secret
+AUTHENTIK_REDIRECT_URI=https://your-domain/api/v1/auth/callback
+AUTHENTIK_SCOPE=openid profile email offline_access
 
-# Environment URLs (defaults - overridden by environment-specific files)
-BACKEND_URL=http://localhost:3000
-FRONTEND_URL=http://localhost:5173
-AUTH_URL=http://localhost:9000
-GRAFANA_URL=http://localhost:3001
-PROMETHEUS_URL=http://localhost:9090
-
-# For future integrations
-# RAZORPAY_KEY_ID=your-razorpay-key-id
-# RAZORPAY_KEY_SECRET=your-razorpay-key-secret
+FRONTEND_URL=https://your-frontend-domain
+BACKEND_URL=https://your-backend-domain
+AUTHENTIK_URL=https://your-authentik-domain
 ```
 
-#### 3.2 Create Development Environment File (`.env.development`)
+**Development Template (`.env.development.example`):**
 ```bash
 # Development Environment Configuration
-# Local development settings
-
-# =============================================================================
-# APPLICATION CONFIGURATION
-# =============================================================================
 NODE_ENV=development
 PORT=3000
-API_VERSION=1.0.0
+HOST=localhost
 
-# =============================================================================
-# DATABASE CONFIGURATION (Neon PostgreSQL)
-# =============================================================================
-DATABASE_URL=your_neon_database_connection_string_here
+DATABASE_URL="postgresql://postgres:password@localhost:5432/airavate_dev?schema=public"
 
-# =============================================================================
-# AUTHENTICATION & SECURITY
-# =============================================================================
-JWT_SECRET=dev_jwt_secret_key_change_in_production
-JWT_EXPIRES_IN=24h
+JWT_SECRET="your-development-jwt-secret-key-minimum-64-characters-for-security"
+JWT_EXPIRES_IN=7d
 
-# =============================================================================
-# AUTHENTIK OAUTH2 CONFIGURATION (Local)
-# =============================================================================
-AUTHENTIK_ISSUER=http://localhost:9000/application/o/airavate-backend/
-AUTHENTIK_CLIENT_ID=your-authentik-client-id-here
-AUTHENTIK_CLIENT_SECRET=your-authentik-client-secret-here
-AUTHENTIK_REDIRECT_URI=http://localhost:3000/api/v1/auth/oauth/callback
-AUTHENTIK_SCOPE=openid profile email
+CORS_ORIGIN=http://localhost:3000,http://localhost:5173,http://localhost:9000
 
-# =============================================================================
-# GOOGLE OAUTH2 CREDENTIALS (for Authentik Google Source)
-# =============================================================================
-GOOGLE_OAUTH_CLIENT_ID=your-google-oauth-client-id-here
-GOOGLE_OAUTH_CLIENT_SECRET=your-google-oauth-client-secret-here
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=1000  # higher limit for development
 
-# =============================================================================
-# CORS CONFIGURATION
-# =============================================================================
-CORS_ORIGIN=http://localhost:3000
-
-# =============================================================================
-# LOGGING CONFIGURATION
-# =============================================================================
 LOG_LEVEL=debug
-LOG_FORMAT=simple
+PRISMA_LOG_LEVEL=info
+
+BCRYPT_ROUNDS=10  # lower rounds for faster development
+
+# Authentik OAuth2 Configuration (Development - localhost)
+AUTHENTIK_ISSUER=http://localhost:9000/application/o/airavate-backend/
+AUTHENTIK_CLIENT_ID=your_development_authentik_client_id
+AUTHENTIK_CLIENT_SECRET=your_development_authentik_client_secret
+AUTHENTIK_REDIRECT_URI=http://localhost:3000/api/v1/auth/callback
+AUTHENTIK_SCOPE=openid profile email offline_access
+
+FRONTEND_URL=http://localhost:5173
+BACKEND_URL=http://localhost:3000
+AUTHENTIK_URL=http://localhost:9000
+```
+
+**Production Template (`.env.production.example`):**
+```bash
+# Production Environment Configuration
+NODE_ENV=production
+PORT=3000
+HOST=0.0.0.0
+
+DATABASE_URL="postgresql://username:password@production-host:5432/airavate_prod?schema=public"
+
+JWT_SECRET="your-production-jwt-secret-key-minimum-64-characters-very-strong-secret"
+JWT_EXPIRES_IN=7d
+
+CORS_ORIGIN=https://app.airavate.in,https://airavate.in
+
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100  # production rate limit
+
+LOG_LEVEL=info
+PRISMA_LOG_LEVEL=warn
+
+BCRYPT_ROUNDS=12
+
+# Authentik OAuth2 Configuration (Production)
+AUTHENTIK_ISSUER=https://auth.airavate.in/application/o/airavate-backend/
+AUTHENTIK_CLIENT_ID=your_production_authentik_client_id
+AUTHENTIK_CLIENT_SECRET=your_production_authentik_client_secret
+AUTHENTIK_REDIRECT_URI=https://airavate.in/api/v1/auth/callback
+AUTHENTIK_SCOPE=openid profile email offline_access
+
+FRONTEND_URL=https://app.airavate.in
+BACKEND_URL=https://airavate.in
+AUTHENTIK_URL=https://auth.airavate.in
+```
 
 # =============================================================================
-# HEALTH CHECK CONFIGURATION
-# =============================================================================
-HEALTH_CHECK_TIMEOUT=5000
-HEALTH_CHECK_INTERVAL=30000
-
-# =============================================================================
-# RATE LIMITING (More lenient for development)
+# RATE LIMITING (Production - More restrictive)
 # =============================================================================
 RATE_LIMIT_WINDOW_MS=900000
-RATE_LIMIT_MAX_REQUESTS=1000
+RATE_LIMIT_MAX_REQUESTS=100
 
 # =============================================================================
-# SWAGGER/OPENAPI CONFIGURATION
+# LOGGING
 # =============================================================================
-SWAGGER_ENABLED=true
-SWAGGER_PATH=/api-docs
+LOG_LEVEL=warn
 
 # =============================================================================
 # ENVIRONMENT URLs
 # =============================================================================
-BACKEND_URL=http://localhost:3000
-FRONTEND_URL=http://localhost:5173
-AUTH_URL=http://localhost:9000
-GRAFANA_URL=http://localhost:3001
-PROMETHEUS_URL=http://localhost:9090
-```
-
-#### 3.3 Create Production Environment File (`.env.production`)
-```bash
-# Production Environment Configuration
-# Production-optimized settings
-
-# =============================================================================
-# APPLICATION CONFIGURATION
-# =============================================================================
-NODE_ENV=production
-PORT=3000
-API_VERSION=1.0.0
-
-# =============================================================================
-# DATABASE CONFIGURATION
-# =============================================================================
-# In production, use environment variables or secure secret management
-DATABASE_URL=your_production_database_url_here
-
-# =============================================================================
-# AUTHENTICATION & SECURITY
-# =============================================================================
-# In production, use strong, randomly generated secrets
-JWT_SECRET=your_production_jwt_secret_here
-JWT_EXPIRES_IN=24h
-
-# =============================================================================
-# AUTHENTIK OAUTH2 CONFIGURATION (Production)
-# =============================================================================
-AUTHENTIK_ISSUER=https://auth.airavate.in/application/o/airavate-backend/
-AUTHENTIK_CLIENT_ID=your_production_authentik_client_id_here
-AUTHENTIK_CLIENT_SECRET=your_production_authentik_client_secret_here
-AUTHENTIK_REDIRECT_URI=https://airavate.in/api/v1/auth/oauth/callback
-AUTHENTIK_SCOPE=openid profile email
-
-# =============================================================================
-# GOOGLE OAUTH2 CREDENTIALS (Production)
-# =============================================================================
-GOOGLE_OAUTH_CLIENT_ID=your_production_google_client_id_here
-GOOGLE_OAUTH_CLIENT_SECRET=your_production_google_client_secret_here
-
-# =============================================================================
-# CORS CONFIGURATION
-# =============================================================================
-CORS_ORIGIN=https://airavate.in
-
-# =============================================================================
-# LOGGING CONFIGURATION
-# =============================================================================
-LOG_LEVEL=warn
-LOG_FORMAT=json
-
-# =============================================================================
-# HEALTH CHECK CONFIGURATION
-# =============================================================================
-HEALTH_CHECK_TIMEOUT=5000
-HEALTH_CHECK_INTERVAL=30000
-
-# =============================================================================
-# RATE LIMITING (Production - more restrictive)
-# =============================================================================
-RATE_LIMIT_WINDOW_MS=900000
-RATE_LIMIT_MAX_REQUESTS=100
-
-# =============================================================================
-# SECURITY
-# =============================================================================
-BCRYPT_ROUNDS=14
-
-# =============================================================================
-# SWAGGER/OPENAPI CONFIGURATION
-# =============================================================================
-SWAGGER_ENABLED=false
-SWAGGER_PATH=/api-docs
-
-# =============================================================================
-# MONITORING & OBSERVABILITY
-# =============================================================================
-METRICS_ENABLED=true
-PROMETHEUS_PORT=9090
+BACKEND_URL=https://airavate.in
+FRONTEND_URL=https://app.airavate.in
+AUTH_URL=https://auth.airavate.in
+GRAFANA_URL=https://grafana.airavate.in
+PROMETHEUS_URL=https://prometheus.airavate.in
 
 # =============================================================================
 # ENVIRONMENT URLs
@@ -525,8 +463,10 @@ docker-compose logs -f
 6. Copy Client ID and Client Secret
 
 #### 6.2 Update Environment Files
-Add Google credentials to `.env.development`:
+Add Google credentials to `.env.development` (these are used by Authentik, not directly by the backend):
 ```bash
+# Note: These are only needed for Authentik Google OAuth configuration
+# They are not used directly by the backend application
 GOOGLE_OAUTH_CLIENT_ID=your-google-client-id-here.apps.googleusercontent.com
 GOOGLE_OAUTH_CLIENT_SECRET=your-google-client-secret-here
 ```
