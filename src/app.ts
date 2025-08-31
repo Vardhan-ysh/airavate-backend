@@ -2,8 +2,9 @@ import express, { Application, Request, Response } from 'express';
 import environment from './config/environment';
 import { connectToDatabase } from './config/database';
 import { setupSwagger } from './config/swagger';
+import { metricsHandler } from './config/metrics';
 import routes from './routes/index';
-import { errorMiddleware, notFoundMiddleware } from './middleware/error.middleware';
+import { errorMiddleware, notFoundMiddleware, metricsMiddleware } from './middleware/index';
 
 class App {
   public app: Application;
@@ -17,6 +18,9 @@ class App {
   }
 
   private initializeMiddlewares(): void {
+    // Metrics middleware (should be first)
+    this.app.use(metricsMiddleware);
+    
     // Basic middleware
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -47,6 +51,9 @@ class App {
         version: '1.0.0',
       });
     });
+
+    // Metrics endpoint for Prometheus
+    this.app.get('/metrics', metricsHandler);
 
     // API routes
     this.app.use('/api/v1', routes);

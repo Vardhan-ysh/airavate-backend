@@ -1,16 +1,24 @@
 import { Request, Response, NextFunction } from 'express';
 
-// Simple validation middleware without express-validator for now
+// Simple validation middleware
 export const validateRegister = (req: Request, res: Response, next: NextFunction): void => {
-    const { email, password } = req.body;
+    const { email, password, firstName, lastName } = req.body;
     
-    if (!email || !password) {
-        res.status(400).json({ message: 'Email and password are required' });
+    if (!email || !password || !firstName || !lastName) {
+        res.status(400).json({ message: 'Email, password, firstName, and lastName are required' });
         return;
     }
     
-    if (password.length < 6) {
-        res.status(400).json({ message: 'Password must be at least 6 characters long' });
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        res.status(400).json({ message: 'Please provide a valid email address' });
+        return;
+    }
+    
+    // Password strength validation
+    if (password.length < 8) {
+        res.status(400).json({ message: 'Password must be at least 8 characters long' });
         return;
     }
     
@@ -22,6 +30,13 @@ export const validateLogin = (req: Request, res: Response, next: NextFunction): 
     
     if (!email || !password) {
         res.status(400).json({ message: 'Email and password are required' });
+        return;
+    }
+    
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        res.status(400).json({ message: 'Please provide a valid email address' });
         return;
     }
     

@@ -2,10 +2,10 @@ openapi: 3.1.0
 info:
   title: Airavate Backend API
   description: |
-    Scalable production-grade backend API for Airavate project with integrated OAuth2/OpenID Connect authentication via Authentik.
+    Scalable production-grade backend API for Airavate project with dual authentication system.
     
     ## Features
-    - ✅ OAuth2/OpenID Connect Authentication (Authentik integration)
+    - ✅ Dual Authentication (Email/Password + Google OAuth via Authentik)
     - ✅ User Management with JWT tokens
     - ✅ Comprehensive Health Monitoring
     - ✅ Audit Logging & Winston logging
@@ -15,10 +15,17 @@ info:
     - ✅ Docker containerization
     - 🔄 Payment Processing (Razorpay - Coming Soon)
     
-    ## Authentication Flow
-    1. Redirect to `/api/v1/auth/login` to initiate OAuth2 flow
-    2. User authenticates via Authentik
-    3. Callback to `/api/v1/auth/callback` with authorization code
+    ## Authentication Methods
+    
+    ### Email/Password Authentication
+    1. Register via `/api/v1/auth/register` 
+    2. Login via `/api/v1/auth/login` with credentials
+    3. Receive JWT token for subsequent requests
+    
+    ### Google OAuth Authentication
+    1. Get OAuth URL from `/api/v1/auth/oauth/google`
+    2. User authenticates via Google through Authentik
+    3. Callback to `/api/v1/auth/oauth/callback` with authorization code
     4. Exchange code for JWT access token
     5. Use JWT token in `Authorization: Bearer <token>` header
     
@@ -27,8 +34,9 @@ info:
     - Rate limiting applied to all endpoints
     - CORS configured for secure cross-origin requests
     - Security headers enforced via Helmet middleware
+    - Password hashing with bcrypt (12 rounds)
     
-  version: 2.0.0
+  version: 3.0.0
   contact:
     name: Airavate Team
     email: admin@airavate.com
@@ -120,74 +128,150 @@ paths:
                 $ref: '#/components/schemas/ApiV1InfoResponse'
 
   # Authentication Endpoints
-  /api/v1/auth/login:
-    get:
+  /api/v1/auth/register:
+    post:
       tags:
         - Authentication
-      summary: Initiate OAuth2 authentication
+      summary: Register new user with email/password
       description: |
-        Redirects user to Authentik OAuth2 authorization endpoint.
-        This starts the OAuth2 authorization code flow.
-      operationId: initiateAuth
+        Register a new user account using email and password.
+        Returns user information and JWT token upon successful registration.
+      operationId: registerUser
       security: []
-      parameters:
-        - name: redirect_uri
-          in: query
-          description: Optional custom redirect URI after successful authentication
-          schema:
-            type: string
-            format: uri
-            example: "https://app.airavate.com/dashboard"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            example:
+              email: "user@example.com"
+              password: "SecurePassword123!"
+              firstName: "John"
+              lastName: "Doe"
       responses:
-        '302':
-          description: Redirect to Authentik authorization endpoint
-          headers:
-            Location:
+        '201':
+          description: Registration successful
+          content:
+            application/json:
               schema:
-                type: string
-                format: uri
-              description: OAuth2 authorization URL
-        '500':
-          description: OAuth2 configuration error
+                $ref: '#/components/schemas/AuthSuccessResponse'
+        '400':
+          description: Invalid input or validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: User already exists
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/v1/auth/callback:
+  /api/v1/auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login with email/password
+      description: |
+        Authenticate user with email and password credentials.
+        Returns user information and JWT token upon successful login.
+      operationId: loginUser
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: "user@example.com"
+              password: "SecurePassword123!"
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSuccessResponse'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/auth/oauth/google:
     get:
       tags:
         - Authentication
-      summary: OAuth2 callback endpoint
+      summary: Get Google OAuth authorization URL
       description: |
-        Handles the OAuth2 callback from Authentik with authorization code.
-        Exchanges code for tokens and creates user session.
-      operationId: handleAuthCallback
+        Returns the Google OAuth authorization URL for initiating OAuth flow.
+        User should be redirected to this URL to authenticate with Google.
+      operationId: getGoogleOAuthUrl
+      security: []
+      responses:
+        '200':
+          description: OAuth URL generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  authUrl:
+                    type: string
+                    format: uri
+                    description: Google OAuth authorization URL
+                    example: "http://localhost:9000/application/o/authorize/?response_type=code&client_id=..."
+        '500':
+          description: OAuth configuration error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/auth/oauth/callback:
+    get:
+      tags:
+        - Authentication
+      summary: OAuth callback endpoint
+      description: |
+        Handles the OAuth callback from Authentik with authorization code.
+        Exchanges code for user information and creates/updates user account.
+      operationId: handleOAuthCallback
       security: []
       parameters:
         - name: code
           in: query
           required: true
-          description: OAuth2 authorization code from Authentik
+          description: OAuth authorization code from Authentik
           schema:
             type: string
             example: "auth_code_12345"
         - name: state
           in: query
           required: true
-          description: OAuth2 state parameter for CSRF protection
+          description: OAuth state parameter for CSRF protection
           schema:
             type: string
             example: "random_state_value"
         - name: error
           in: query
-          description: OAuth2 error parameter if authentication failed
+          description: OAuth error parameter if authentication failed
           schema:
             type: string
             example: "access_denied"
       responses:
         '200':
-          description: Authentication successful
+          description: OAuth authentication successful
           content:
             application/json:
               schema:
@@ -581,41 +665,62 @@ components:
           example: "/docs"
 
     # Authentication Schemas
+    RegisterRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          description: User's email address
+          example: "user@example.com"
+        password:
+          type: string
+          format: password
+          description: User's password (minimum 8 characters)
+          example: "SecurePassword123!"
+        firstName:
+          type: string
+          description: User's first name
+          example: "John"
+        lastName:
+          type: string
+          description: User's last name
+          example: "Doe"
+      required:
+        - email
+        - password
+        - firstName
+        - lastName
+
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          description: User's email address
+          example: "user@example.com"
+        password:
+          type: string
+          format: password
+          description: User's password
+          example: "SecurePassword123!"
+      required:
+        - email
+        - password
+
     AuthSuccessResponse:
       type: object
       properties:
-        message:
-          type: string
-          example: "Authentication successful"
         user:
           $ref: '#/components/schemas/UserProfile'
-        tokens:
-          type: object
-          properties:
-            access_token:
-              type: string
-              description: JWT access token
-              example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-            refresh_token:
-              type: string
-              description: Refresh token for token renewal
-              example: "refresh_token_12345"
-            token_type:
-              type: string
-              example: "Bearer"
-            expires_in:
-              type: integer
-              description: Token expiration time in seconds
-              example: 3600
-        redirect_url:
+        token:
           type: string
-          format: uri
-          description: Optional redirect URL after successful authentication
-          example: "https://app.airavate.com/dashboard"
+          description: JWT access token
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
       required:
-        - message
         - user
-        - tokens
+        - token
 
     # User Schemas
     UserProfile:
@@ -630,19 +735,11 @@ components:
           format: email
           description: User's email address
           example: "user@example.com"
-        name:
-          type: string
-          description: User's full name
-          example: "John Doe"
-        preferred_username:
-          type: string
-          description: User's preferred username
-          example: "johndoe"
-        given_name:
+        firstName:
           type: string
           description: User's first name
           example: "John"
-        family_name:
+        lastName:
           type: string
           description: User's last name
           example: "Doe"
@@ -650,46 +747,30 @@ components:
           type: string
           format: uri
           description: URL to user's profile picture
-          example: "https://auth.airavate.com/media/avatars/user.jpg"
-        email_verified:
-          type: boolean
-          description: Whether user's email is verified
-          example: true
-        locale:
+          example: "https://example.com/avatar.jpg"
+        provider:
           type: string
-          description: User's locale preference
-          example: "en-US"
-        groups:
-          type: array
-          items:
-            type: string
-          description: User's group memberships
-          example: ["users", "premium"]
-        roles:
-          type: array
-          items:
-            type: string
-          description: User's role assignments
-          example: ["user", "admin"]
-        created_at:
+          description: Authentication provider used
+          enum: ["email", "google"]
+          example: "email"
+        createdAt:
           type: string
           format: date-time
           description: Account creation timestamp
-        updated_at:
+          example: "2025-08-31T10:30:00.000Z"
+        updatedAt:
           type: string
           format: date-time
-          description: Last profile update timestamp
-        last_login:
-          type: string
-          format: date-time
-          description: Last login timestamp
+          description: Last update timestamp
+          example: "2025-08-31T10:30:00.000Z"
       required:
         - id
         - email
-        - name
-        - email_verified
-        - created_at
-        - updated_at
+        - firstName
+        - lastName
+        - provider
+        - createdAt
+        - updatedAt
 
     UserProfileUpdate:
       type: object

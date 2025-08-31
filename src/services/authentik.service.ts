@@ -68,7 +68,12 @@ export class AuthentikService {
       logger.info('Initializing Authentik service...');
 
       // Discover OpenID Connect configuration
-      const configUrl = `${env.AUTHENTIK_ISSUER.replace(/\/$/, '')}/.well-known/openid_configuration`;
+      const configUrl = `${env.AUTHENTIK_ISSUER.replace(/\/$/, '')}/.well-known/openid-configuration`;
+      
+      logger.info('Attempting to fetch OpenID configuration', { 
+        issuer: env.AUTHENTIK_ISSUER,
+        configUrl: configUrl 
+      });
       
       const response: AxiosResponse<OpenIDConfiguration> = await axios.get(configUrl, {
         timeout: 10000,

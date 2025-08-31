@@ -42,6 +42,31 @@ const environment: Environment = {
   AUTHENTIK_SCOPE: process.env.AUTHENTIK_SCOPE || 'openid profile email offline_access',
 };
 
+// Helper function to get environment-specific URLs
+export const getEnvironmentUrls = () => {
+  const isProduction = environment.NODE_ENV === 'production';
+  
+  return {
+    // Backend URLs
+    backendUrl: isProduction ? 'https://airavate.in' : 'http://localhost:3000',
+    // Frontend URLs (will be separate frontend project)
+    frontendUrl: isProduction ? 'https://app.airavate.in' : 'http://localhost:5173',
+    // Auth URLs
+    authUrl: isProduction ? 'https://auth.airavate.in' : 'http://localhost:9000',
+    // Monitoring URLs (development only)
+    grafanaUrl: 'http://localhost:3001',
+    prometheusUrl: 'http://localhost:9090',
+    // OAuth redirect URI
+    oauthRedirectUri: isProduction 
+      ? 'https://airavate.in/api/v1/auth/callback'
+      : 'http://localhost:3000/api/v1/auth/callback',
+    // Authentik issuer
+    authentikIssuer: isProduction
+      ? 'https://auth.airavate.in/application/o/airavate-backend/'
+      : 'http://localhost:9000/application/o/airavate-backend/',
+  };
+};
+
 // Validate required environment variables
 const requiredEnvVars = ['DATABASE_URL', 'JWT_SECRET'];
 for (const envVar of requiredEnvVars) {

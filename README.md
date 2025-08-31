@@ -4,7 +4,7 @@ A scalable, production-grade backend API for the Airavate project with integrate
 
 ## 📋 Features
 
-- ✅ **OAuth2/OpenID Connect Authentication** (Authentik integration)
+- ✅ **Dual Authentication System** (Email/Password + Google OAuth via Authentik)
 - ✅ **User Management** with JWT tokens
 - ✅ **PostgreSQL Database** with Prisma ORM
 - ✅ **Comprehensive API Documentation** (Swagger/OpenAPI)
@@ -81,15 +81,14 @@ airavate-backend/
 ### User Table
 ```sql
 model User {
-  id          String   @id @default(cuid())
-  email       String   @unique
-  name        String?
-  picture     String?
-  provider    String   @default("authentik")
-  providerId  String   @unique
-  accessToken String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  email     String   @unique
+  firstName String?
+  lastName  String?
+  picture   String?
+  provider  String   @default("email") // "email" or "google"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("users")
 }
@@ -98,11 +97,10 @@ model User {
 **Fields:**
 - `id`: Unique identifier (CUID)
 - `email`: User email address (unique)
-- `name`: Display name (optional)
+- `firstName`: User's first name (optional)
+- `lastName`: User's last name (optional)
 - `picture`: Profile picture URL (optional)
-- `provider`: OAuth provider (default: "authentik")
-- `providerId`: Unique ID from OAuth provider
-- `accessToken`: OAuth access token (encrypted)
+- `provider`: Authentication provider ("email" or "google")
 - `createdAt`: Account creation timestamp
 - `updatedAt`: Last update timestamp
 
@@ -126,30 +124,48 @@ model User {
 ### Authentication Routes
 | Method | Endpoint | Description | Auth Required |
 |--------|----------|-------------|---------------|
-| GET | `/api/v1/auth/login` | Initiate OAuth2 login flow | ❌ |
-| GET | `/api/v1/auth/callback` | OAuth2 callback handler | ❌ |
+| POST | `/api/v1/auth/register` | Register with email/password | ❌ |
+| POST | `/api/v1/auth/login` | Login with email/password | ❌ |
+| GET | `/api/v1/auth/oauth/google` | Get Google OAuth URL | ❌ |
+| GET | `/api/v1/auth/oauth/callback` | OAuth callback handler | ❌ |
 | POST | `/api/v1/auth/logout` | Logout user | ✅ |
 | GET | `/api/v1/auth/me` | Get current user info | ✅ |
 
-**Login Flow:**
-1. **GET** `/api/v1/auth/login` - Redirects to Authentik
-2. User authenticates with Authentik
-3. **GET** `/api/v1/auth/callback?code=...` - Exchanges code for token
+**Registration Request:**
+```json
+{
+  "email": "user@example.com",
+  "password": "SecurePassword123!",
+  "firstName": "John",
+  "lastName": "Doe"
+}
+```
+
+**Login Request:**
+```json
+{
+  "email": "user@example.com",
+  "password": "SecurePassword123!"
+}
+```
+
+**OAuth Flow:**
+1. **GET** `/api/v1/auth/oauth/google` - Returns Google OAuth URL
+2. User authenticates with Google via Authentik
+3. **GET** `/api/v1/auth/oauth/callback?code=...` - Exchanges code for token
 4. Returns JWT token for subsequent requests
 
 **Auth Response Example:**
 ```json
 {
-  "success": true,
-  "data": {
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "user": {
-      "id": "clx123456789",
-      "email": "user@example.com",
-      "name": "John Doe",
-      "picture": "https://example.com/avatar.jpg"
-    }
-  }
+  "user": {
+    "id": "clx123456789",
+    "email": "user@example.com",
+    "firstName": "John",
+    "lastName": "Doe",
+    "provider": "email"
+  },
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 }
 ```
 
@@ -177,12 +193,19 @@ model User {
 
 ## 🔐 Authentication Flow
 
-1. **Initiate Login**: User visits `/api/v1/auth/login`
-2. **OAuth2 Redirect**: Redirected to Authentik authorization server
-3. **User Authentication**: User authenticates with Authentik
-4. **Authorization Code**: Authentik redirects to `/api/v1/auth/callback`
-5. **Token Exchange**: Backend exchanges code for access token
-6. **User Creation/Update**: User profile is created or updated
+### Email/Password Authentication
+1. **Registration**: User registers with email/password via `/api/v1/auth/register`
+2. **Login**: User logs in with credentials via `/api/v1/auth/login`
+3. **JWT Token**: Backend issues JWT for subsequent requests
+4. **Protected Routes**: JWT required for protected endpoints
+
+### Google OAuth Authentication
+1. **Initiate OAuth**: User visits `/api/v1/auth/oauth/google`
+2. **OAuth URL**: Backend returns Google OAuth authorization URL
+3. **User Authentication**: User authenticates with Google via Authentik
+4. **Authorization Code**: Authentik redirects to `/api/v1/auth/oauth/callback`
+5. **Token Exchange**: Backend exchanges code for user information
+6. **User Creation/Login**: User profile is created or updated
 7. **JWT Token**: Backend issues JWT for subsequent requests
 8. **Protected Routes**: JWT required for protected endpoints
 
@@ -229,19 +252,28 @@ NODE_ENV=development
 
 # JWT Configuration
 JWT_SECRET="your-super-secure-jwt-secret-key-min-32-chars"
-JWT_EXPIRES_IN="24h"
+JWT_EXPIRES_IN="7d"
 
-# OAuth2 Configuration (Will be updated after Authentik setup)
-OAUTH_CLIENT_ID="your-authentik-client-id"
-OAUTH_CLIENT_SECRET="your-authentik-client-secret"
-OAUTH_REDIRECT_URI="http://localhost:3000/api/v1/auth/callback"
-AUTHENTIK_URL="http://localhost:9000"
+# Authentik OAuth Configuration
+AUTHENTIK_ISSUER="http://localhost:9000/application/o/airavate-backend/"
+AUTHENTIK_CLIENT_ID="your-authentik-client-id"
+AUTHENTIK_CLIENT_SECRET="your-authentik-client-secret"
+AUTHENTIK_REDIRECT_URI="http://localhost:3000/api/v1/auth/oauth/callback"
+AUTHENTIK_SCOPE="openid profile email"
 
 # CORS Configuration
 CORS_ORIGIN="http://localhost:3000"
 
+# Security
+BCRYPT_ROUNDS=12
+
+# Rate Limiting
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
+
 # Logging
-LOG_LEVEL="debug"
+LOG_LEVEL="info"
+PRISMA_LOG_LEVEL="info"
 ```
 
 #### Authentik (authentik/.env)
@@ -297,50 +329,45 @@ docker-compose logs -f
 
 Wait 2-3 minutes for all services to fully start and become healthy.
 
-### 7. Configure Authentik (First Time Setup)
+### 7. Configure Authentik OAuth Setup
 
-#### 7.1 Initial Setup
-1. **Access Authentik**: Open http://localhost:9000/if/flow/initial-setup/
-2. **Create Admin Account**: 
-   - Email: `admin@localhost`
-   - Password: Create a secure password
-   - Click "Continue"
+#### 7.1 Access Authentik Admin
+1. **Open**: http://localhost:9000
+2. **Login with**: `akadmin` / `admin123!` (or your admin credentials)
 
-#### 7.2 Create OAuth2 Application
-1. **Login to Admin**: http://localhost:9000/if/admin/
-2. **Navigate to Applications**: 
-   - Click "Applications" in sidebar
-   - Click "Applications" submenu
-3. **Create New Application**:
-   - Click "Create" button
+#### 7.2 Create Google OAuth Source
+1. **Navigate**: Directory → Federation & Social login
+2. **Create Source**: Google
+3. **Configure**:
+   - **Name**: `Google OAuth`
+   - **Slug**: `google`
+   - **Consumer key**: Your Google OAuth Client ID
+   - **Consumer secret**: Your Google OAuth Client Secret
+4. **Save**
+
+#### 7.3 Create OAuth2 Provider
+1. **Navigate**: Applications → Providers
+2. **Create Provider**: OAuth2/OpenID Provider
+3. **Configure**:
+   - **Name**: `Airavate Backend OAuth`
+   - **Client type**: `Confidential`
+   - **Redirect URIs**: `http://localhost:3000/api/v1/auth/oauth/callback`
+   - **Scopes**: `openid profile email`
+4. **Save** and copy the **Client ID** and **Client Secret**
+
+#### 7.4 Create Application
+1. **Navigate**: Applications → Applications
+2. **Create Application**:
    - **Name**: `Airavate Backend`
    - **Slug**: `airavate-backend`
-   - **Provider**: Click "Create new provider"
+   - **Provider**: Select the provider from step 7.3
+3. **Save**
 
-#### 7.3 Configure OAuth2 Provider
-1. **Provider Settings**:
-   - **Name**: `Airavate Backend Provider`
-   - **Type**: `OAuth2/OpenID Provider`
-   - **Client type**: `Confidential`
-   - **Client ID**: Will be auto-generated (copy this)
-   - **Client Secret**: Will be auto-generated (copy this)
-
-2. **URLs Configuration**:
-   - **Redirect URIs**: `http://localhost:3000/api/v1/auth/callback`
-   - **Post logout redirect URIs**: `http://localhost:3000`
-
-3. **Scopes**: Add these scopes
-   - `openid` (required)
-   - `profile` (required)
-   - `email` (required)
-
-4. **Click "Create"**
-
-#### 7.4 Update Environment Variables
-Copy the generated Client ID and Secret to your backend `.env` file:
+#### 7.5 Update Environment Variables
+Copy the Client ID and Secret to your `.env` file:
 ```bash
-OAUTH_CLIENT_ID="your-copied-client-id"
-OAUTH_CLIENT_SECRET="your-copied-client-secret"
+AUTHENTIK_CLIENT_ID="your-copied-client-id"
+AUTHENTIK_CLIENT_SECRET="your-copied-client-secret"
 ```
 
 ### 8. Start Development Server
@@ -369,11 +396,32 @@ npm run dev
 - **Authentik Admin**: http://localhost:9000/if/admin/
 - **Authentik User Portal**: http://localhost:9000
 
-#### 9.2 Test Authentication Flow
-1. **Visit**: http://localhost:3000/api/v1/auth/login
-2. **Authenticate**: Complete Authentik login process
-3. **Verify**: Should redirect back with JWT token
-4. **Test Protected Route**: http://localhost:3000/api/v1/auth/me
+#### 9.2 Test Authentication Endpoints
+
+**Test Email/Password Registration:**
+```bash
+curl -X POST http://localhost:3000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"TestPassword123!","firstName":"Test","lastName":"User"}'
+```
+
+**Test Email/Password Login:**
+```bash
+curl -X POST http://localhost:3000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"TestPassword123!"}'
+```
+
+**Test Google OAuth URL Generation:**
+```bash
+curl http://localhost:3000/api/v1/auth/oauth/google
+```
+
+**Test Protected Route (use token from login response):**
+```bash
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  http://localhost:3000/api/v1/auth/me
+```
 
 #### 9.3 Create Test User (Optional)
 1. **Access Authentik Admin**: http://localhost:9000/if/admin/
